@@ -31,6 +31,11 @@ interface CategoryNNDT {
     name: string;
 }
 
+interface ProductImage {
+    url: string;
+    imageId: string;
+}
+
 interface User {
     _id: string;
     email: string;
@@ -51,7 +56,7 @@ interface Product {
     isActive?: boolean;
     isMoi?: boolean;
     categorynndt?: CategoryNNDT | string;
-    images?: string[];
+    images?: ProductImage[];
     createdAt?: string;
     creatorId?: User | string;
 }
@@ -85,6 +90,8 @@ const ProductNNDTAdmin: React.FC = () => {
 
     const [alert, setAlert] = useState<{ type: "success" | "error" | "info"; message: string; description?: string } | null>(null);
 
+
+
     const fetchData = async (page = 1, pageSize = DEFAULT_PAGE_SIZE, searchText = "", categoryId: string | null = null) => {
         try {
             setLoading(true);
@@ -99,7 +106,7 @@ const ProductNNDTAdmin: React.FC = () => {
         }
     };
 
-    const images = viewingProduct?.images || [];
+    const images = viewingProduct?.images?.map(img => img.url) || [];
 
     const openViewer = (index: any) => {
         setCurrentIndex(index);
@@ -138,17 +145,6 @@ const ProductNNDTAdmin: React.FC = () => {
         setModalVisible(true);
     };
 
-    const openEditModal = (p: Product) => {
-        setEditingProduct(p);
-        form.setFieldsValue({
-            name: p.name,
-            description: p.description,
-            category: typeof p.categorynndt === "string" ? p.categorynndt : (p.categorynndt?._id ?? ""),
-        });
-        setUploadFileList(toFileListFromUrls(p.images ?? []));
-        setModalVisible(true);
-    };
-
     const openViewModal = async (id?: string) => {
         if (!id) return;
         try {
@@ -180,10 +176,24 @@ const ProductNNDTAdmin: React.FC = () => {
     const handleSave = async (values: any) => {
         try {
             setLoading(true);
+
+            // Tách file mới & file cũ
             const newFiles = uploadFileList.filter(f => !!(f as any).originFileObj);
 
+            // Lấy danh sách ảnh cũ còn giữ lại (có cấu trúc {url, imageId})
+            const oldImages = uploadFileList
+                .filter(f => !f.originFileObj && f.url) // chỉ giữ lại ảnh cũ còn tồn tại
+                .map(f => {
+                    // Tìm ảnh tương ứng trong editingProduct để lấy imageId
+                    const originalImage = editingProduct?.images?.find(img => img.url === f.url);
+                    return {
+                        url: f.url!,
+                        imageId: originalImage?.imageId || '' // lấy imageId từ data gốc
+                    };
+                });
+
             if (!editingProduct) {
-                // CREATE: bắt buộc phải có ít nhất 1 ảnh
+                // CREATE
                 if (newFiles.length === 0) {
                     message.error("Vui lòng chọn ít nhất 1 ảnh để tạo sản phẩm");
                     return;
@@ -197,18 +207,16 @@ const ProductNNDTAdmin: React.FC = () => {
                 formData.append("isMoi", values.isMoi ?? "");
 
                 newFiles.forEach(f => {
-                    if ((f as any).originFileObj) {
-                        formData.append("images", (f as any).originFileObj as File);
-                    }
+                    formData.append("images", (f as any).originFileObj as File);
                 });
 
                 await createProduct(formData);
-                showAlert("success", "Thêm sản phẩm thành công")
+                showAlert("success", "Thêm sản phẩm thành công");
 
             } else {
-                // EDIT: xử lý 2 trường hợp riêng biệt
-                if (newFiles.length > 0) {
-                    // Có file mới -> gửi FormData (multipart)
+                // UPDATE
+                if (newFiles.length > 0 || oldImages.length !== (editingProduct.images?.length ?? 0)) {
+                    // Có thay đổi ảnh (thêm mới hoặc xóa bớt) → multipart
                     const formData = new FormData();
                     formData.append("name", values.name);
                     formData.append("description", description || "");
@@ -216,31 +224,32 @@ const ProductNNDTAdmin: React.FC = () => {
                     formData.append("isActive", values.isActive ?? "");
                     formData.append("isMoi", values.isMoi ?? "");
 
+                    // Gửi danh sách ảnh cũ còn giữ lại (với imageId)
+                    formData.append("oldImages", JSON.stringify(oldImages));
+
+                    // Thêm ảnh mới
                     newFiles.forEach(f => {
-                        if ((f as any).originFileObj) {
-                            formData.append("images", (f as any).originFileObj as File);
-                        }
+                        formData.append("images", (f as any).originFileObj as File);
                     });
 
                     await updateProduct(editingProduct._id!, formData);
 
                 } else {
-                    // Không có file mới -> chỉ update text fields (JSON)
+                    // Không đổi ảnh → chỉ update text fields
                     const updateData: ProductUpdateData = {
                         name: values.name,
                         description: description || "",
                         categorynndt: values.categorynndt ?? "",
                         isActive: values.isActive ?? "",
-                        isMoi: values.isMoi ?? ""
+                        isMoi: values.isMoi ?? "",
                     };
-
                     await updateProduct(editingProduct._id!, updateData);
                 }
 
-                showAlert("success", "Cập nhật sản phẩm thành công")
+                showAlert("success", "Cập nhật sản phẩm thành công");
             }
 
-            // Reset form và state
+            // Reset state
             setModalVisible(false);
             setEditingProduct(null);
             form.resetFields();
@@ -250,10 +259,9 @@ const ProductNNDTAdmin: React.FC = () => {
 
         } catch (err) {
             console.error("Error saving product:", err);
-            showAlert("error", "Lỗi khi lưu sản phẩm")
-        }
-        finally {
-            setLoading(false)
+            showAlert("error", "Lỗi khi lưu sản phẩm");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -267,11 +275,11 @@ const ProductNNDTAdmin: React.FC = () => {
         });
         setDescription(record.description || ""); // fix CKEditor value
         setUploadFileList(
-            (record.images || []).map((img, index) => ({
+            (record.images || []).map((img: any, index: number) => ({
                 uid: String(index),
                 name: `images-${index}`,
                 status: "done",
-                url: img,
+                url: img.url,  // ✅ dùng img.url thay vì img
             }))
         );
         setModalVisible(true);
@@ -293,9 +301,9 @@ const ProductNNDTAdmin: React.FC = () => {
         {
             title: "Hình",
             dataIndex: "images",
-            render: (images: string[] = []) => (
+            render: (images: { url: string; imageId: string }[] = []) => (
                 <img
-                    src={images && images.length > 0 ? images[0] : undefined}
+                    src={images.length > 0 ? images[0].url : undefined}
                     alt=""
                     style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6 }}
                 />

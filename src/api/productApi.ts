@@ -41,7 +41,7 @@ export async function getProducts(
     pageSize
   };
 
-  if (searchText) params.searchText = searchText;
+  if (searchText) params.search = searchText;
   if (categoryId) params.category = categoryId; // ✅ thêm filter category
 
   const res = await axiosClient.get("/product", { params });
@@ -49,7 +49,7 @@ export async function getProducts(
 }
 
 export const getCategories = async (): Promise<any[]> => {
-  const res = await axiosClient.get('/categories/', { headers: authHeaders() });
+  const res = await axiosClient.get('/categories', { headers: authHeaders() });
   return res.data;
 };
 
@@ -59,7 +59,7 @@ export const getProductById = async (id: string): Promise<any> => {
 };
 
 export const createProduct = async (formData: FormData): Promise<any> => {
-  const res = await axiosClient.post('/product/', formData, { headers: authHeaders(true) });
+  const res = await axiosClient.post('/product', formData, { headers: authHeaders(true) });
   return res.data;
 };
 
@@ -81,14 +81,6 @@ export const deleteProduct = async (id: string): Promise<any> => {
 };
 
 
-
-// export const getProducts = async(page : number = 1, limit: number = 10, search: string = "") => {
-//     const res = await axiosClient.get('/product/', {
-//         params: {page, limit, search},
-//         headers : {Authorization: `Bearer ${token}`},
-//     });
-//     return res.data;
-// }
 
 // export const getCategories = async () => {
 //     const res = await axiosClient.get('/categories/', {

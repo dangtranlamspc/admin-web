@@ -43,6 +43,11 @@ interface User {
   email: string;
 }
 
+interface ProductImage {
+  url: string;
+  imageId: string;
+}
+
 interface ProductUpdateData {
   name: string;
   description?: string;
@@ -58,18 +63,18 @@ interface Product {
   isActive?: boolean;
   isMoi?: boolean;
   category?: Category | string;
-  images?: string[];
+  images?: ProductImage[];
   createdAt?: string;
   creatorId?: User | string;
 }
 
-const toFileListFromUrls = (urls: string[] = []) =>
-  urls.map<UploadFile>((url, i) => ({
-    uid: `old-${i}`,
-    name: url.split("/").pop() ?? `image-${i}`,
-    status: "done",
-    url,
-  }));
+// const toFileListFromUrls = (urls: string[] = []) =>
+//   urls.map<UploadFile>((url, i) => ({
+//     uid: `old-${i}`,
+//     name: url.split("/").pop() ?? `image-${i}`,
+//     status: "done",
+//     url,
+//   }));
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -106,7 +111,7 @@ const ProductAdmin: React.FC = () => {
     }
   };
 
-  const images = viewingProduct?.images || [];
+  const images = viewingProduct?.images?.map(img => img.url) || [];
 
   const openViewer = (index: any) => {
     setCurrentIndex(index);
@@ -145,16 +150,16 @@ const ProductAdmin: React.FC = () => {
     setModalVisible(true);
   };
 
-  const openEditModal = (p: Product) => {
-    setEditingProduct(p);
-    form.setFieldsValue({
-      name: p.name,
-      description: p.description,
-      category: typeof p.category === "string" ? p.category : (p.category?._id ?? ""),
-    });
-    setUploadFileList(toFileListFromUrls(p.images ?? []));
-    setModalVisible(true);
-  };
+  // const openEditModal = (p: Product) => {
+  //   setEditingProduct(p);
+  //   form.setFieldsValue({
+  //     name: p.name,
+  //     description: p.description,
+  //     category: typeof p.category === "string" ? p.category : (p.category?._id ?? ""),
+  //   });
+  //   setUploadFileList(toFileListFromUrls(p.images ?? []));
+  //   setModalVisible(true);
+  // };
 
   const openViewModal = async (id?: string) => {
     if (!id) return;
@@ -186,7 +191,19 @@ const ProductAdmin: React.FC = () => {
 
   const handleSave = async (values: any) => {
     try {
+      setLoading(true)
       const newFiles = uploadFileList.filter(f => !!(f as any).originFileObj);
+
+      const oldImages = uploadFileList
+        .filter(f => !f.originFileObj && f.url) // chỉ giữ lại ảnh cũ còn tồn tại
+        .map(f => {
+          // Tìm ảnh tương ứng trong editingProduct để lấy imageId
+          const originalImage = editingProduct?.images?.find(img => img.url === f.url);
+          return {
+            url: f.url!,
+            imageId: originalImage?.imageId || '' // lấy imageId từ data gốc
+          };
+        });
 
       if (!editingProduct) {
         // CREATE: bắt buộc phải có ít nhất 1 ảnh
@@ -203,9 +220,7 @@ const ProductAdmin: React.FC = () => {
         formData.append("isMoi", values.isMoi ?? "");
 
         newFiles.forEach(f => {
-          if ((f as any).originFileObj) {
-            formData.append("images", (f as any).originFileObj as File);
-          }
+          formData.append("images", (f as any).originFileObj as File);
         });
 
         await createProduct(formData);
@@ -213,7 +228,7 @@ const ProductAdmin: React.FC = () => {
 
       } else {
         // EDIT: xử lý 2 trường hợp riêng biệt
-        if (newFiles.length > 0) {
+        if (newFiles.length > 0 || oldImages.length !== (editingProduct.images?.length ?? 0)) {
           // Có file mới -> gửi FormData (multipart)
           const formData = new FormData();
           formData.append("name", values.name);
@@ -222,10 +237,10 @@ const ProductAdmin: React.FC = () => {
           formData.append("isActive", values.isActive ?? "");
           formData.append("isMoi", values.isMoi ?? "");
 
+          formData.append("oldImages", JSON.stringify(oldImages));
+
           newFiles.forEach(f => {
-            if ((f as any).originFileObj) {
-              formData.append("images", (f as any).originFileObj as File);
-            }
+            formData.append("images", (f as any).originFileObj as File);
           });
 
           await updateProduct(editingProduct._id!, formData);
@@ -257,6 +272,8 @@ const ProductAdmin: React.FC = () => {
     } catch (err) {
       console.error("Error saving product:", err);
       showAlert("error", "Lỗi khi lưu sản phẩm")
+    } finally {
+      setLoading(false)
     }
   };
 
@@ -265,16 +282,16 @@ const ProductAdmin: React.FC = () => {
     form.setFieldsValue({
       name: record.name,
       category: typeof record.category === "string" ? record.category : (record.category?._id ?? ""),
-      isActive : record.isActive,
-      isNew : record.isMoi,
+      isActive: record.isActive,
+      isNew: record.isMoi,
     });
     setDescription(record.description || ""); // fix CKEditor value
     setUploadFileList(
-      (record.images || []).map((img, index) => ({
+      (record.images || []).map((img: any, index: number) => ({
         uid: String(index),
         name: `images-${index}`,
         status: "done",
-        url: img,
+        url: img.url,  // ✅ dùng img.url thay vì img
       }))
     );
     setModalVisible(true);
@@ -296,9 +313,9 @@ const ProductAdmin: React.FC = () => {
     {
       title: "Hình",
       dataIndex: "images",
-      render: (images: string[] = []) => (
+      render: (images: { url: string; imageId: string }[] = []) => (
         <img
-          src={images && images.length > 0 ? images[0] : undefined}
+          src={images.length > 0 ? images[0].url : undefined}
           alt=""
           style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6 }}
         />

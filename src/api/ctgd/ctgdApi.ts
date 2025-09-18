@@ -31,8 +31,8 @@ export async function getProducts(
     pageSize
   };
 
-  if (searchText) params.searchText = searchText;
-  if (categoryctgdId) params.categoryctgdId = categoryctgdId; // ✅ thêm filter category
+  if (searchText) params.search = searchText;
+  if (categoryctgdId) params.categoryctgd = categoryctgdId; // ✅ thêm filter category
 
   const res = await axiosClient.get("/ctgds", { params });
   return res.data;
