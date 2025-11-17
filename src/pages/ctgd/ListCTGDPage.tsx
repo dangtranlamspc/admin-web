@@ -1,4 +1,3 @@
-// src/pages/ProductAdmin.tsx
 import React, { useEffect, useState } from "react";
 import {
     Table,
@@ -60,14 +59,6 @@ interface Product {
     createdAt?: string;
     creatorId?: User | string;
 }
-
-const toFileListFromUrls = (urls: string[] = []) =>
-    urls.map<UploadFile>((url, i) => ({
-        uid: `old-${i}`,
-        name: url.split("/").pop() ?? `image-${i}`,
-        status: "done",
-        url,
-    }));
 
 const DEFAULT_PAGE_SIZE = 10;
 

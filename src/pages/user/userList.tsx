@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Input, Space, Table, Upload, Modal, Form, Select, message, Popconfirm } from 'antd';
-import { UploadOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Input, Space, Table, Modal, Form, Select, message, Popconfirm } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { User } from '../../types/user'
 import { userApi } from '../../api/usersApi'
@@ -15,13 +15,7 @@ export default function UserList() {
   const [form] = Form.useForm();
 
   const fetchData = async () => {
-    // setLoading(true);
-    // try {
-    //   const res = await userApi.getAll({ search });
-    //   setData(res.data);
-    // } finally {
-    //   setLoading(false);
-    // }
+
     setLoading(true);
     try {
       const data = await userApi.getAll({ search });

@@ -1,5 +1,5 @@
 // src/pages/BlogAdmin.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Table, Button, Modal, Form, Input, Select, Space,
     Popconfirm, message, Row, Col, Descriptions,
@@ -48,7 +48,7 @@ const ThuVienAdmin: React.FC = () => {
     const [editingBlog, setEditingBlog] = useState<ThuVien | null>(null);
     const [viewingBlog, setViewingBlog] = useState<ThuVien | null>(null);
 
-    const [alert, setAlert] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
+    const [, setAlert] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
     const [form] = Form.useForm();
 

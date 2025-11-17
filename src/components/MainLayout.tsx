@@ -1,4 +1,4 @@
-import { Layout, Menu, Avatar, Dropdown, Button } from "antd";
+import { Layout, Menu, Dropdown, Button } from "antd";
 import {
   DashboardOutlined,
   AppstoreOutlined,
